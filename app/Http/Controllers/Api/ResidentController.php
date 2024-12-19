@@ -44,7 +44,7 @@ class ResidentController
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'age' => 'required|integer|min:0|max:150',
-            'birth_date' => 'required|date|before:today',
+            'birth_date' => 'required|date|before:today|date_format:Y-m-d',
             'address' => 'required|string|max:255',
             'origin_city' => 'required|string|max:100',
             'origin_campus' => 'required|string|max:100',
@@ -87,14 +87,14 @@ class ResidentController
     public function update(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'age' => 'required|integer|min:0|max:150',
-            'birth_date' => 'required|date|before:today',
-            'address' => 'required|string|max:255',
-            'origin_city' => 'required|string|max:100',
-            'origin_campus' => 'required|string|max:100',
+            'name' => 'nullable|string|max:255',
+            'age' => 'nullable|integer|min:0|max:150',
+            'birth_date' => 'nullable|date|before:today',
+            'address' => 'nullable|string|max:255',
+            'origin_city' => 'nullable|string|max:100',
+            'origin_campus' => 'nullable|string|max:100',
             'phone_number' => 'nullable|string|regex:/^\+?[0-9]{10,15}$/',
-            'room_number' => 'required|string|max:50',
+            'room_number' => 'nullable|string|max:50',
             'status' => 'nullable|string|in:active,inactive',
         ]);
 
@@ -109,7 +109,7 @@ class ResidentController
         }
 
         try {
-            $input = $request->only(['name', 'email', 'phone_number', 'room_number', 'status']);
+            $input = $request->only(['name', 'age', 'birth_date', 'address', 'origin_city', 'origin_campus', 'phone_number', 'room_number', 'status']);
 
 
             $resident->update(array_filter($input, function ($value) {

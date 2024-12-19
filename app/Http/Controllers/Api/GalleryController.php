@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Constants\ErrorMessages;
 use App\Http\Constants\SuccessMessages;
 use App\Http\Responses\ApiResponse;
+use App\Models\CategoryGallery;
 use App\Models\Gallery;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -19,8 +20,13 @@ class GalleryController extends Controller
         $page = $request->input('page', 1);
         $limit = $request->input('limit', 10);
         $sortBy = $request->input('sort_by', 'updated_at');
+        $categoryId = $request->input('category_id');
 
         $query = Gallery::query();
+
+        if (isset($categoryId)) {
+            $query->filterByCategoryId($categoryId);
+        }
 
         if (in_array($sortBy, ['name', 'created_at', 'updated_at'])) {
             $query->orderBy($sortBy, 'desc');
@@ -28,15 +34,23 @@ class GalleryController extends Controller
 
         $galleries = $query->paginate($limit);
 
+        foreach ($galleries as $gallery) {
+            $category = CategoryGallery::find($gallery->category_id);
+            if ($category) {
+                $gallery->category_name = $category->name;
+            }
+        }
+
         return ApiResponse::pagination(SuccessMessages::SUCCESS_GET_GALLERY, $galleries);
     }
 
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:255',
+            'type' => 'required|in:Foto,Video',
             'file' => 'required',
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:20',
+            'category_id' => 'required|exists:category_galleries,id'
         ]);
 
         if ($validator->fails()) {
@@ -45,10 +59,21 @@ class GalleryController extends Controller
 
         try {
             $input = $request->all();
-            $gallery = Gallery::create($input);
+
+            $category = CategoryGallery::find($input['category_id']);
+            if (!$category) {
+                return ApiResponse::error(sprintf(ErrorMessages::FAILED_CREATE_MODEL, 'categori'), 400);
+            }
+
+            $gallery = Gallery::create([
+                'title' => $input['title'],
+                'type' => $input['type'],
+                'file' => $input['file'],
+                'category_id' => $category->id,
+            ]);
 
             if (!$gallery) {
-                return ApiResponse::error(sprintf(ErrorMessages::FAILED_CREATE_MODEL, 'gallery'), 404);
+                return ApiResponse::error(sprintf(ErrorMessages::MESSAGE_NOT_FOUND, 'gallery'), 404);
             }
 
             return ApiResponse::success(SuccessMessages::SUCCESS_CREATE_GALLERY, $gallery, 201);
@@ -66,7 +91,10 @@ class GalleryController extends Controller
         if (!$gallery) {
             return ApiResponse::error(sprintf(ErrorMessages::MESSAGE_NOT_FOUND, 'Gallery'), 404);
         }
-
+        $category = CategoryGallery::find($gallery->category_id);
+        if ($category) {
+            $gallery->category_name = $category->name;
+        }
         return ApiResponse::success(SuccessMessages::SUCCESS_GET_GALLERY, $gallery);
     }
 
@@ -79,17 +107,14 @@ class GalleryController extends Controller
         }
 
         try {
-            // Convert file dari Base64 ke byte array
             $fileContent = base64_decode($gallery->file);
 
             if ($fileContent === false) {
                 return ApiResponse::error('Invalid Base64 file data', 400);
             }
 
-            // Tentukan MIME type, bisa Anda sesuaikan dengan tipe file yang ada
             $mimeType = Storage::mimeType($gallery->file);
 
-            // Kembalikan file dengan response dan konten tipe sesuai MIME
             return response($fileContent, Response::HTTP_OK)
                 ->header('Content-Type', $mimeType);
         } catch (\Exception $e) {
@@ -102,9 +127,10 @@ class GalleryController extends Controller
     public function update(Request $request, $id)
     {
         $validator = Validator::make($request->all(), [
-            'file' => 'required|string|regex:/^([A-Za-z0-9+/=]\s*)*$/',
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string|max:20',
+            'title' => 'nullable|string|max:255',
+            'type' => 'nullable|in:Foto,Video',
+            'file' => 'nullable',
+            'category_id' => 'nullable|exists:category_galleries,id'
         ]);
 
         if ($validator->fails()) {
@@ -118,8 +144,16 @@ class GalleryController extends Controller
         }
 
         try {
-            $input = $request->only(['name', 'file', 'description']);
+            $input = $request->only(['title', 'type', 'file', 'category_id']);
 
+            if (isset($input['category_id']) && $input['category_id'] !== null) {
+                $category = CategoryGallery::find($input['category_id']);
+                if (!$category) {
+                    return ApiResponse::error(sprintf(ErrorMessages::MESSAGE_NOT_FOUND, 'Category'), 400);
+                }
+            } else {
+                unset($input['category_id']);
+            }
 
             $gallery->update(array_filter($input, function ($value) {
                 return !is_null($value);

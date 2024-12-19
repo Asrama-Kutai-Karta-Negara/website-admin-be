@@ -6,26 +6,21 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
-class Gallery extends Model
+class FinancialReport extends Model
 {
     use HasFactory;
     public $incrementing = false;
     protected $keyType = 'string';
 
-    protected $table = 'galleries';
+    protected $table = 'financial_reports';
 
     protected $fillable = [
-        'category_id',
         'title',
-        'type',
-        'kategori',
-        'file'
+        'report_evidence',
+        'report_date',
+        'report_amount',
+        'report_categories'
     ];
-
-    public function category()
-    {
-        return $this->belongsTo(CategoryGallery::class);
-    }
 
     protected static function boot()
     {
@@ -38,12 +33,8 @@ class Gallery extends Model
         });
     }
 
-    public function scopeFilterByCategoryId($query, $categoryId)
+    public function scopeByReportCategories($query, $category)
     {
-        if ($categoryId) {
-            $query->where('category_id', $categoryId);
-        }
-
-        return $query;
+        return $query->where('report_categories', $category);
     }
 }

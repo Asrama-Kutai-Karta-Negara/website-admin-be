@@ -16,7 +16,11 @@ class Resident extends Model
 
     protected $fillable = [
         'name',
-        'email',
+        'age',
+        'birth_date',
+        'address',
+        'origin_city',
+        'origin_campus',
         'phone_number',
         'room_number',
         'status',
@@ -36,6 +40,11 @@ class Resident extends Model
     public function scopeByName($query, $name)
     {
         return $query->where('name', 'like', "%{$name}%");
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
     }
 
     protected static function boot()

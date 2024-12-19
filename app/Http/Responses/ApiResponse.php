@@ -27,7 +27,7 @@ abstract class ApiResponse
             'message' => $message,
             'count' => $data->total(),
             'current_page' => $data->currentPage(),
-            'previous_paage' => $data->currentPage() - 1,
+            'previous_page' => $data->currentPage() - 1,
             'total_pages' => $data->lastPage(),
             'data' => $data->items()
         ], $status);

@@ -18,4 +18,18 @@ class SuccessMessages
     public const SUCCESS_CREATE_GALLERY = "Galleries created successfully";
     public const SUCCESS_UPDATE_GALLERY = "Galleries updated successfully";
     public const SUCCESS_DELETE_GALLERY = "Galleries deleted successfully";
+
+    public const SUCCESS_GET_PAYMENT = "Payments retrieved successfully";
+    public const SUCCESS_CREATE_PAYMENT = "Payments created successfully";
+    public const SUCCESS_UPDATE_PAYMENT = "Payments updated successfully";
+    public const SUCCESS_DELETE_PAYMENT = "Payments deleted successfully";
+
+    public const SUCCESS_SYNC_PAYMENT = "Payments synchronized successfully";
+
+    public const SUCCESS_GET_FINANCIAL_REPORT = "Financial Reports retrieved successfully";
+    public const SUCCESS_CREATE_FINANCIAL_REPORT = "Financial Reports created successfully";
+    public const SUCCESS_UPDATE_FINANCIAL_REPORT = "Financial Reports updated successfully";
+    public const SUCCESS_DELETE_FINANCIAL_REPORT = "Financial Reports deleted successfully";
+
+    public const SUCCESS_GET_CATEGORY = "Categories retrieved successfully";
 }

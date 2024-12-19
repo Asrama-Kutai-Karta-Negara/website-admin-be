@@ -11,12 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('galleries', function (Blueprint $table) {
+        Schema::create('financial_reports', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->string('title')->nullable();
-            $table->string('type')->default('Foto');
-            $table->foreignUuid('category_id')->constrained('category_galleries')->onDelete('cascade');
-            $table->text('file');
+            $table->string('title');
+            $table->text('report_evidence')->nullable();
+            $table->date('report_date');
+            $table->decimal('report_amount', 15, 2);
+            $table->string('report_categories');
             $table->timestamps();
         });
     }
@@ -26,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('galleries');
+        Schema::dropIfExists('financial_reports');
     }
 };

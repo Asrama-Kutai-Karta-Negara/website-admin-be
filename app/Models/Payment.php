@@ -6,25 +6,26 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
-class Gallery extends Model
+class Payment extends Model
 {
     use HasFactory;
     public $incrementing = false;
     protected $keyType = 'string';
 
-    protected $table = 'galleries';
+    protected $table = 'payments';
 
     protected $fillable = [
-        'category_id',
-        'title',
-        'type',
-        'kategori',
-        'file'
+        'resident_id',
+        'payment_evidence',
+        'billing_date',
+        'billing_amount',
+        'status',
+        'move_to_report'
     ];
 
-    public function category()
+    public function resident()
     {
-        return $this->belongsTo(CategoryGallery::class);
+        return $this->belongsTo(Resident::class);
     }
 
     protected static function boot()
@@ -38,12 +39,17 @@ class Gallery extends Model
         });
     }
 
-    public function scopeFilterByCategoryId($query, $categoryId)
+    public function scopeFilterByResidentId($query, $residentId)
     {
-        if ($categoryId) {
-            $query->where('category_id', $categoryId);
+        if ($residentId) {
+            $query->where('resident_id', $residentId);
         }
 
         return $query;
+    }
+
+    public function scopeByStatus($query, $status)
+    {
+        return $query->where('move_to_report', $status);
     }
 }

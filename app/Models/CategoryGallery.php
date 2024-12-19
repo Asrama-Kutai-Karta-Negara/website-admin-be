@@ -6,25 +6,22 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
-class Gallery extends Model
+class CategoryGallery extends Model
 {
     use HasFactory;
     public $incrementing = false;
     protected $keyType = 'string';
 
-    protected $table = 'galleries';
+    protected $table = 'category_galleries';
 
     protected $fillable = [
-        'category_id',
-        'title',
-        'type',
-        'kategori',
-        'file'
+        'name',
+        'description'
     ];
 
-    public function category()
+    public function galeries()
     {
-        return $this->belongsTo(CategoryGallery::class);
+        return $this->hasMany(Gallery::class);
     }
 
     protected static function boot()
@@ -36,14 +33,5 @@ class Gallery extends Model
                 $model->id = (string) Str::uuid();
             }
         });
-    }
-
-    public function scopeFilterByCategoryId($query, $categoryId)
-    {
-        if ($categoryId) {
-            $query->where('category_id', $categoryId);
-        }
-
-        return $query;
     }
 }
