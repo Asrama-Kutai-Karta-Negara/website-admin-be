@@ -10,6 +10,7 @@ use App\Models\Resident;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class PaymentController
 {
@@ -21,16 +22,18 @@ class PaymentController
         $page = $request->input('page', 1);
         $limit = $request->input('limit', 10);
         $sortBy = $request->input('sort_by', 'updated_at');
-        $residentId = $request->input('resident_id');
+        $residentName = $request->input('resident');
         $status = $request->input('sync_status');
 
         $query = Payment::query();
 
-        if (isset($residentId)) {
-            $query->filterByResidentId($residentId);
+        if (isset($residentName)) {
+            $residentIds = Resident::where('name', 'like', '%' . $residentName . '%')
+                ->pluck('id')
+                ->toArray();
+            $query->filterByArrayResidentId($residentIds);
         }
 
-        var_dump($status);
         if (isset($status)) {
             $status = filter_var($status, FILTER_VALIDATE_BOOLEAN);
             $query->byStatus($status);
@@ -46,6 +49,7 @@ class PaymentController
             $resident = Resident::find($payment->resident_id);
             if ($resident) {
                 $payment->resident_name = $resident->name;
+                // $payment->payment_evidence = null;
             }
         }
 
@@ -68,6 +72,7 @@ class PaymentController
         $validator = Validator::make($request->all(), [
             'resident_id' => 'required|exists:residents,id',
             'payment_evidence' => 'required',
+            'payment_file_name' => 'required',
             'billing_date' => 'required|date|date_format:Y-m-d',
             'billing_amount' => 'required|numeric|min:0',
             'status' => 'nullable|string|in:Belum Dibayar,Sudah Dibayar'
@@ -135,6 +140,7 @@ class PaymentController
         $validator = Validator::make($request->all(), [
             'resident_id' => 'nullable|exists:residents,id',
             'payment_evidence' => 'nullable',
+            'payment_file_name' => 'nullable',
             'billing_date' => 'nullable|date|before:today|date_format:Y-m-d',
             'billing_amount' => 'nullable|numeric|min:0',
             'status' => 'nullable|string|in:Belum Dibayar,Sudah Dibayar'
@@ -151,7 +157,7 @@ class PaymentController
         }
 
         try {
-            $input = $request->only(['payment_evidence', 'billing_date', 'billing_amount', 'status', 'resident_id']);
+            $input = $request->only(['payment_evidence', 'payment_file_name', 'billing_date', 'billing_amount', 'status', 'resident_id']);
 
             if (isset($input['resident_id']) && $input['resident_id'] !== null) {
                 $resident = Resident::find($input['resident_id']);
@@ -160,6 +166,15 @@ class PaymentController
                 }
             } else {
                 unset($input['category_id']);
+            }
+
+            if (isset($input['payment_evidence']) && $input['payment_evidence'] !== null) {
+                if (isset($input['file_name']) && $input['file_name'] !== null) {
+                    $input['payment_file_name'] = $request['payment_file_name'];
+                } else {
+                    $extention = '.jpg';
+                    $input['payment_file_name'] = (string) Str::uuid() + $extention;
+                }
             }
 
             $payment->update(array_filter($input, function ($value) {

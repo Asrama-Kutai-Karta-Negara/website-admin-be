@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('type')->default('Foto');
             $table->foreignUuid('category_id')->constrained('category_galleries')->onDelete('cascade');
             $table->text('file');
+            $table->string('file_name');
             $table->timestamps();
         });
     }

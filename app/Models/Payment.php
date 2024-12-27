@@ -17,6 +17,7 @@ class Payment extends Model
     protected $fillable = [
         'resident_id',
         'payment_evidence',
+        'payment_file_name',
         'billing_date',
         'billing_amount',
         'status',
@@ -39,10 +40,10 @@ class Payment extends Model
         });
     }
 
-    public function scopeFilterByResidentId($query, $residentId)
+    public function scopeFilterByArrayResidentId($query, $residentIds)
     {
-        if ($residentId) {
-            $query->where('resident_id', $residentId);
+        if (!empty($residentIds)) {
+            $query->whereIn('resident_id', $residentIds);
         }
 
         return $query;

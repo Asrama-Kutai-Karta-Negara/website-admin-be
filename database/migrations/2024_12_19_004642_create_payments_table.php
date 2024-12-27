@@ -15,6 +15,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('resident_id')->constrained('residents')->onDelete('cascade');
             $table->text('payment_evidence');
+            $table->string('payment_file_name');
             $table->date('billing_date');
             $table->decimal('billing_amount', 15, 2);
             $table->string('status')->default('Belum Dibayar');

@@ -19,7 +19,8 @@ class Gallery extends Model
         'title',
         'type',
         'kategori',
-        'file'
+        'file',
+        'file_name'
     ];
 
     public function category()
@@ -36,6 +37,11 @@ class Gallery extends Model
                 $model->id = (string) Str::uuid();
             }
         });
+    }
+
+    public function scopeByTitle($query, $name)
+    {
+        return $query->where('title', 'like', "%{$name}%");
     }
 
     public function scopeFilterByCategoryId($query, $categoryId)

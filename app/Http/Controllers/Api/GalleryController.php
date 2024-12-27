@@ -12,17 +12,26 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Support\Str;
 
 class GalleryController extends Controller
 {
     public function index(Request $request)
     {
         $page = $request->input('page', 1);
-        $limit = $request->input('limit', 10);
+        $limit = $request->input('limit', null);
         $sortBy = $request->input('sort_by', 'updated_at');
         $categoryId = $request->input('category_id');
+        $name = $request->input('name');
+
+        $maxLimit = 1000;
+        $limit = is_numeric($limit) ? min((int)$limit, $maxLimit) : $maxLimit;
 
         $query = Gallery::query();
+
+        if ($name) {
+            $query->byTitle($name);
+        }
 
         if (isset($categoryId)) {
             $query->filterByCategoryId($categoryId);
@@ -38,6 +47,7 @@ class GalleryController extends Controller
             $category = CategoryGallery::find($gallery->category_id);
             if ($category) {
                 $gallery->category_name = $category->name;
+                // $gallery->file = null;
             }
         }
 
@@ -50,6 +60,7 @@ class GalleryController extends Controller
             'title' => 'required|string|max:255',
             'type' => 'required|in:Foto,Video',
             'file' => 'required',
+            'file_name' => 'required',
             'category_id' => 'required|exists:category_galleries,id'
         ]);
 
@@ -69,6 +80,7 @@ class GalleryController extends Controller
                 'title' => $input['title'],
                 'type' => $input['type'],
                 'file' => $input['file'],
+                'file_name' => $input['file_name'],
                 'category_id' => $category->id,
             ]);
 
@@ -130,6 +142,7 @@ class GalleryController extends Controller
             'title' => 'nullable|string|max:255',
             'type' => 'nullable|in:Foto,Video',
             'file' => 'nullable',
+            'file_name' => 'nullable',
             'category_id' => 'nullable|exists:category_galleries,id'
         ]);
 
@@ -144,8 +157,18 @@ class GalleryController extends Controller
         }
 
         try {
-            $input = $request->only(['title', 'type', 'file', 'category_id']);
-
+            $input = $request->only(['title', 'type', 'file', 'category_id', 'file_name']);
+            if (isset($input['file']) && $input['file'] !== null) {
+                if (isset($input['file_name']) && $input['file_name'] !== null) {
+                    $input['file_name'] = $request['file_name'];
+                } else {
+                    $extention = '.jpg';
+                    if ($request['type'] === 'Video') {
+                        $extention = '.mp4';
+                    }
+                    $input['file_name'] = (string) Str::uuid() + $extention;
+                }
+            }
             if (isset($input['category_id']) && $input['category_id'] !== null) {
                 $category = CategoryGallery::find($input['category_id']);
                 if (!$category) {

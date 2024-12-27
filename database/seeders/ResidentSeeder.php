@@ -13,6 +13,6 @@ class ResidentSeeder extends Seeder
     public function run(): void
     {
         //
-        Resident::factory()->count(10)->create();
+        Resident::factory()->count(30)->create();
     }
 }
