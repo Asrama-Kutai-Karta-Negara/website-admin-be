@@ -77,10 +77,10 @@ class PaymentController
     {
         $validator = Validator::make($request->all(), [
             'resident_id' => 'required|exists:residents,id',
-            'payment_evidence' => 'required|file|mimes:jpg,png,jpeg|max:5120',
+            'payment_evidence' => 'nullable|file|mimes:jpg,png,jpeg|max:5120',
             'billing_date' => 'required|date|date_format:Y-m-d',
             'billing_amount' => 'required|numeric|min:0',
-            'status' => 'nullable|string|in:Belum Dibayar,Sudah Dibayar'
+            'status' => 'string|in:Belum Dibayar,Sudah Dibayar'
         ]);
 
         if ($validator->fails()) {
@@ -89,6 +89,8 @@ class PaymentController
 
         try {
             $input = $request->all();
+            $fileName = null;
+            $filePath = null;
 
             $resident = Resident::find($input['resident_id']);
             if (!$resident) {
@@ -96,19 +98,15 @@ class PaymentController
             } else {
                 $input['resident_id'] = $resident->id;
             }
+            if ($request->hasFile('payment_evidence')) {
+                $file = $request->file('payment_evidence');
+                if (!$file->isValid()) {
+                    return ApiResponse::error('File is not valid', 400);
+                }
 
-            $file = $request->file('payment_evidence');
-            $filePath = $file->store(FileConstant::FOLDER_PAYMENTS, FileConstant::FOLDER_PUBLIC);
-
-            if (!$file->isValid()) {
-                return ApiResponse::error('File is not valid', 400);
+                $filePath = $file->store(FileConstant::FOLDER_PAYMENTS, FileConstant::FOLDER_PUBLIC);
+                $fileName = basename($filePath);
             }
-            $fileContent = file_get_contents($file->getRealPath());
-            if (!$fileContent) {
-                return ApiResponse::error('Error reading the file content', 500);
-            }
-
-            $fileName = basename($filePath);
 
             $payment = Payment::create([
                 'resident_id' => $input['resident_id'],
@@ -256,6 +254,7 @@ class PaymentController
             return ApiResponse::error(sprintf(ErrorMessages::MESSAGE_NOT_FOUND, 'Payment'), 404);
         }
 
+        Storage::disk(FileConstant::FOLDER_PUBLIC)->delete($payment->payment_evidence);
         $payment->delete();
 
         return ApiResponse::success(SuccessMessages::SUCCESS_DELETE_PAYMENT);

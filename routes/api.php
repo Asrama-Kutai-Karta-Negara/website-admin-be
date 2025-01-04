@@ -31,6 +31,7 @@ Route::middleware([JwtMiddleware::class, HeaderMiddleware::class])->group(functi
         Route::post('/logout', [AuthController::class, 'logout']);
 
         Route::get('residents', [ResidentController::class, 'index']);
+        Route::get('get-residents-index', [ResidentController::class, 'getIndex']);
         Route::post('residents', [ResidentController::class, 'store']);
         Route::get('residents/{id}', [ResidentController::class, 'show']);
         Route::put('residents/{id}', [ResidentController::class, 'update']);

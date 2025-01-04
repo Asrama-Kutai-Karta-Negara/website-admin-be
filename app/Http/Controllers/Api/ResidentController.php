@@ -66,6 +66,36 @@ class ResidentController
         return ApiResponse::pagination(SuccessMessages::SUCCESS_GET_RESIDENT, $residents);
     }
 
+    public function getIndex(Request $request)
+    {
+        $page = $request->input('page', 1);
+        $limit = $request->input('limit', null);
+        $sortBy = $request->input('sort_by', 'updated_at');
+
+        $maxLimit = 1000;
+        $limit = is_numeric($limit) ? min((int)$limit, $maxLimit) : $maxLimit;
+
+        $query = Resident::query();
+
+        $query->select('id', 'name', 'room_number_id');
+
+        if (in_array($sortBy, ['name', 'room_number_id'])) {
+            $query->orderBy($sortBy, 'asc');
+        }
+
+        $residents = $query->paginate($limit);
+
+        foreach ($residents as $resident) {
+            $roomNumber = RoomNumber::find($resident->room_number_id);
+            if ($roomNumber) {
+                $resident->room_number = $roomNumber->name;
+                $resident->name = $resident->name . ' - ' . $resident->room_number;
+            }
+        }
+
+        return ApiResponse::pagination(SuccessMessages::SUCCESS_GET_RESIDENT, $residents);
+    }
+
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -203,7 +233,8 @@ class ResidentController
             return ApiResponse::error(sprintf(ErrorMessages::MESSAGE_NOT_FOUND, 'Resident'), 404);
         }
 
-        $resident->delete();
+        $resident->status = 'inactive';
+        $resident->save();
 
         return ApiResponse::success(SuccessMessages::SUCCESS_DELETE_RESIDENT);
     }

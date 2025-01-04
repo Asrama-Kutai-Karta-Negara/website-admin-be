@@ -207,13 +207,14 @@ class GalleryController extends Controller
 
     public function destroy($id)
     {
-        $galerry = Gallery::find($id);
+        $gallery = Gallery::find($id);
 
-        if (!$galerry) {
-            return ApiResponse::error(sprintf(ErrorMessages::MESSAGE_NOT_FOUND, 'Galerry'), 404);
+        if (!$gallery) {
+            return ApiResponse::error(sprintf(ErrorMessages::MESSAGE_NOT_FOUND, 'Gallery'), 404);
         }
 
-        $galerry->delete();
+        Storage::disk(FileConstant::FOLDER_PUBLIC)->delete($gallery->file);
+        $gallery->delete();
 
         return ApiResponse::success(SuccessMessages::SUCCESS_DELETE_GALLERY);
     }

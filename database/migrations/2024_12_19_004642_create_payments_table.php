@@ -15,8 +15,8 @@ return new class extends Migration
         Schema::create('payments', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('resident_id')->constrained('residents')->onDelete('cascade');
-            $table->text('payment_evidence');
-            $table->string('payment_file_name');
+            $table->text('payment_evidence')->nullable();
+            $table->string('payment_file_name')->nullable();
             $table->date('billing_date');
             $table->decimal('billing_amount', 15, 2);
             $table->string('status')->default('Belum Dibayar');
