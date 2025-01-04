@@ -3,14 +3,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Constants\ErrorMessages;
+use App\Http\Constants\FileConstant;
 use App\Http\Constants\SuccessMessages;
 use App\Http\Responses\ApiResponse;
 use App\Models\Payment;
 use App\Models\Resident;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response;
 
 class PaymentController
 {
@@ -20,10 +23,13 @@ class PaymentController
     public function index(Request $request)
     {
         $page = $request->input('page', 1);
-        $limit = $request->input('limit', 10);
+        $limit = $request->input('limit', null);
         $sortBy = $request->input('sort_by', 'updated_at');
         $residentName = $request->input('resident');
         $status = $request->input('sync_status');
+
+        $maxLimit = 1000;
+        $limit = is_numeric($limit) ? min((int)$limit, $maxLimit) : $maxLimit;
 
         $query = Payment::query();
 
@@ -49,8 +55,8 @@ class PaymentController
             $resident = Resident::find($payment->resident_id);
             if ($resident) {
                 $payment->resident_name = $resident->name;
-                // $payment->payment_evidence = null;
             }
+            $payment->payment_evidence = Storage::url($payment->payment_evidence);
         }
 
         return ApiResponse::pagination(SuccessMessages::SUCCESS_GET_PAYMENT, $payments);
@@ -71,8 +77,7 @@ class PaymentController
     {
         $validator = Validator::make($request->all(), [
             'resident_id' => 'required|exists:residents,id',
-            'payment_evidence' => 'required',
-            'payment_file_name' => 'required',
+            'payment_evidence' => 'required|file|mimes:jpg,png,jpeg|max:5120',
             'billing_date' => 'required|date|date_format:Y-m-d',
             'billing_amount' => 'required|numeric|min:0',
             'status' => 'nullable|string|in:Belum Dibayar,Sudah Dibayar'
@@ -91,7 +96,28 @@ class PaymentController
             } else {
                 $input['resident_id'] = $resident->id;
             }
-            $payment = Payment::create($input);
+
+            $file = $request->file('payment_evidence');
+            $filePath = $file->store(FileConstant::FOLDER_PAYMENTS, FileConstant::FOLDER_PUBLIC);
+
+            if (!$file->isValid()) {
+                return ApiResponse::error('File is not valid', 400);
+            }
+            $fileContent = file_get_contents($file->getRealPath());
+            if (!$fileContent) {
+                return ApiResponse::error('Error reading the file content', 500);
+            }
+
+            $fileName = basename($filePath);
+
+            $payment = Payment::create([
+                'resident_id' => $input['resident_id'],
+                'payment_evidence' => $filePath,
+                'payment_file_name' => $fileName,
+                'billing_date' => $input['billing_date'],
+                'billing_amount' => $input['billing_amount'],
+                'status' => $input['status'],
+            ]);
 
             if (!$payment) {
                 return ApiResponse::error(sprintf(ErrorMessages::FAILED_CREATE_MODEL, 'payment'), 404);
@@ -124,6 +150,33 @@ class PaymentController
         return ApiResponse::success(SuccessMessages::SUCCESS_GET_PAYMENT, $payment);
     }
 
+    public function showFile($id)
+    {
+        $payment = Payment::find($id);
+
+        if (!$payment) {
+            return ApiResponse::error(sprintf(ErrorMessages::MESSAGE_NOT_FOUND, 'Payment'), 404);
+        }
+
+        try {
+            $filePath = $payment->file;
+            if (!Storage::disk(FileConstant::FOLDER_PUBLIC)->exists($filePath)) {
+                return ApiResponse::error('File not found', 404);
+            }
+
+            $fileContent = Storage::disk(FileConstant::FOLDER_PUBLIC)->get($filePath);
+
+            $mimeType = File::mimeType(Storage::disk(FileConstant::FOLDER_PUBLIC)->path($filePath));
+
+            return response($fileContent, Response::HTTP_OK)
+                ->header('Content-Type', $mimeType);
+        } catch (\Exception $e) {
+            Log::error('Error retrieving file: ' . $e->getMessage());
+
+            return ApiResponse::error($e->getMessage(), 500);
+        }
+    }
+
     /**
      * Show the form for editing the specified resource.
      */
@@ -139,8 +192,7 @@ class PaymentController
     {
         $validator = Validator::make($request->all(), [
             'resident_id' => 'nullable|exists:residents,id',
-            'payment_evidence' => 'nullable',
-            'payment_file_name' => 'nullable',
+            'payment_evidence' => 'nullable|file|mimes:jpg,png,jpeg|max:5120',
             'billing_date' => 'nullable|date|before:today|date_format:Y-m-d',
             'billing_amount' => 'nullable|numeric|min:0',
             'status' => 'nullable|string|in:Belum Dibayar,Sudah Dibayar'
@@ -168,13 +220,15 @@ class PaymentController
                 unset($input['category_id']);
             }
 
-            if (isset($input['payment_evidence']) && $input['payment_evidence'] !== null) {
-                if (isset($input['file_name']) && $input['file_name'] !== null) {
-                    $input['payment_file_name'] = $request['payment_file_name'];
-                } else {
-                    $extention = '.jpg';
-                    $input['payment_file_name'] = (string) Str::uuid() + $extention;
-                }
+            if ($request->hasFile('payment_evidence')) {
+                Storage::disk(FileConstant::FOLDER_PUBLIC)->delete($payment->payment_evidence);
+
+                $file = $request->file('payment_evidence');
+                $filePath = $file->store(FileConstant::FOLDER_PAYMENTS, FileConstant::FOLDER_PUBLIC);
+                $input['payment_evidence'] = $filePath;
+
+                $fileName = basename($filePath);
+                $input['payment_file_name'] = $fileName;
             }
 
             $payment->update(array_filter($input, function ($value) {

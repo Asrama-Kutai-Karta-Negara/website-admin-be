@@ -4,19 +4,19 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Constants\SuccessMessages;
 use App\Http\Responses\ApiResponse;
-use App\Models\CategoryGallery;
+use App\Models\OriginCity;
 use Illuminate\Http\Request;
 
-class CategoryController
+class OriginCityController
 {
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        $categories = CategoryGallery::orderBy('name', 'asc')->get();
+        $originCities = OriginCity::orderBy('name', 'asc')->get();
 
-        return ApiResponse::success(SuccessMessages::SUCCESS_GET_CATEGORY, $categories);
+        return ApiResponse::success(SuccessMessages::SUCCESS_GET_ORIGIN_CITY, $originCities);
     }
 
     /**

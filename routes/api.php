@@ -5,7 +5,10 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\FinancialReportController;
 use App\Http\Controllers\Api\ResidentController;
 use App\Http\Controllers\Api\GalleryController;
+use App\Http\Controllers\Api\OriginCampusController;
 use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\RoomNumberController;
+use App\Http\Controllers\Api\OriginCityController;
 use App\Http\Middleware\HeaderMiddleware;
 use App\Http\Middleware\JwtMiddleware;
 use Illuminate\Support\Facades\Route;
@@ -17,7 +20,8 @@ Route::group([
 
     Route::post('register', [AuthController::class, 'register']);
     Route::post('login', [AuthController::class, 'login']);
-    Route::post('refresh', [AuthController::class, 'refresh']);
+    Route::post('check-token', [AuthController::class, 'checkToken']);
+    Route::post('refresh-token', [AuthController::class, 'refreshToken']);
 });
 
 
@@ -32,6 +36,11 @@ Route::middleware([JwtMiddleware::class, HeaderMiddleware::class])->group(functi
         Route::put('residents/{id}', [ResidentController::class, 'update']);
         Route::delete('residents/{id}', [ResidentController::class, 'destroy']);
 
+        Route::get('categories', [CategoryController::class, 'index']);
+        Route::get('room-numbers', [RoomNumberController::class, 'index']);
+        Route::get('origin-campuses', [OriginCampusController::class, 'index']);
+        Route::get('origin-cities', [OriginCityController::class, 'index']);
+
         Route::get('galleries', [GalleryController::class, 'index']);
         Route::post('galleries', [GalleryController::class, 'store']);
         Route::get('galleries/{id}', [GalleryController::class, 'show']);
@@ -42,6 +51,7 @@ Route::middleware([JwtMiddleware::class, HeaderMiddleware::class])->group(functi
         Route::get('payments', [PaymentController::class, 'index']);
         Route::post('payments', [PaymentController::class, 'store']);
         Route::get('payments/{id}', [PaymentController::class, 'show']);
+        Route::get('payments/get-file/{id}', [PaymentController::class, 'showFile']);
         Route::put('payments/{id}', [PaymentController::class, 'update']);
         Route::delete('payments/{id}', [PaymentController::class, 'destroy']);
 

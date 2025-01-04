@@ -14,6 +14,8 @@ class ErrorMessages
     public const TOKEN_EXPIRED = 'Token has expired';
     public const TOKEN_INVALID = 'Token is invalid';
     public const TOKEN_MISSING = 'Token is missing';
+    public const TOKEN_INVALID_MISSING = 'Invalid or missing token';
+    public const TOKEN_FAILED_VERIFIED = 'Failed to verify token, please try again';
 
     public const MESSAGE_NOT_FOUND = '%s not found';
 

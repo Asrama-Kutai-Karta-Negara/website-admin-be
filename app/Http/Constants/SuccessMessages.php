@@ -32,4 +32,10 @@ class SuccessMessages
     public const SUCCESS_DELETE_FINANCIAL_REPORT = "Financial Reports deleted successfully";
 
     public const SUCCESS_GET_CATEGORY = "Categories retrieved successfully";
+    public const SUCCESS_GET_ORIGIN_CAMPUS = "Origin Campus retrieved successfully";
+    public const SUCCESS_GET_ORIGIN_CITY = "Origin City retrieved successfully";
+    public const SUCCESS_GET_ROOM_NUMBER = "Room Number retrieved successfully";
+
+    public const TOKEN_VALID = 'Token is valid';
+    public const TOKEN_REFRESHED = 'Refresh token successfully';
 }

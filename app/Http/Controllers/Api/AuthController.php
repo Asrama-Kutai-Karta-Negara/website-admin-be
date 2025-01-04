@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Tymon\JWTAuth\Exceptions\TokenExpiredException;
+use Tymon\JWTAuth\Exceptions\TokenInvalidException;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
@@ -109,11 +111,55 @@ class AuthController extends Controller
     public function logout()
     {
         try {
-            JWTAuth::invalidate(JWTAuth::getToken());
-
-            return ApiResponse::success(SuccessMessages::SUCCESS_LOGOUT);
+            if (JWTAuth::getToken() && JWTAuth::check()) {
+                JWTAuth::invalidate(JWTAuth::getToken());
+                return ApiResponse::success(SuccessMessages::SUCCESS_LOGOUT);
+            }
+            return ApiResponse::error(ErrorMessages::TOKEN_INVALID_MISSING);
         } catch (\Exception $e) {
             return ApiResponse::error('Failed to logout, please try again.', 500);
+        }
+    }
+
+    public function checkToken()
+    {
+        try {
+            $token = JWTAuth::getToken();
+
+            if (!$token) {
+                return ApiResponse::error(ErrorMessages::TOKEN_MISSING, 401);
+            }
+
+            if (JWTAuth::check()) {
+                return ApiResponse::success(SuccessMessages::TOKEN_VALID);
+            }
+
+            return ApiResponse::error(ErrorMessages::TOKEN_INVALID, 401);
+        } catch (TokenExpiredException $e) {
+            return ApiResponse::error(ErrorMessages::TOKEN_EXPIRED + "." + "Please login again.", 401);
+        } catch (TokenInvalidException $e) {
+            return ApiResponse::error(ErrorMessages::TOKEN_INVALID + "." + "Please login again", 401);
+        } catch (\Exception $e) {
+            return ApiResponse::error(ErrorMessages::TOKEN_FAILED_VERIFIED, 500);
+        }
+    }
+
+    public function refreshToken()
+    {
+        try {
+            $currentToken = JWTAuth::getToken();
+
+            if (!$currentToken) {
+                return ApiResponse::error(ErrorMessages::TOKEN_MISSING, 401);
+            }
+            $newToken = JWTAuth::refresh($currentToken);
+
+            return ApiResponse::success(SuccessMessages::TOKEN_REFRESHED, [
+                'access_token' => $newToken,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Token refresh failed: ' . $e->getMessage());
+            return ApiResponse::error(ErrorMessages::TOKEN_FAILED_VERIFIED, 500);
         }
     }
 }

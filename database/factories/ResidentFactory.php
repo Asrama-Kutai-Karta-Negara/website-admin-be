@@ -2,7 +2,10 @@
 
 namespace Database\Factories;
 
+use App\Models\OriginCampus;
+use App\Models\OriginCity;
 use App\Models\Resident;
+use App\Models\RoomNumber;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -19,15 +22,21 @@ class ResidentFactory extends Factory
 
     public function definition()
     {
+
+        $age = $this->faker->numberBetween(18, 30);
+        $birthDate = now()->subYears($age)->subMonths(rand(1, 12));
+
+        $address = $this->faker->address();
+
         return [
             'name' => $this->faker->name(),
-            'age' => $this->faker->numberBetween(18, 30),
-            'birth_date' => $this->faker->date('Y-m-d', '-18 years'),
-            'address' => $this->faker->address(),
-            'origin_city' => $this->faker->city(),
-            'origin_campus' => $this->faker->company(), // Nama kampus sebagai nama perusahaan
-            'phone_number' => $this->faker->optional()->phoneNumber(),
-            'room_number' => $this->faker->randomDigitNotNull(),
+            'age' => $age,
+            'birth_date' => $birthDate->format('Y-m-d'),
+            'address' => $address,
+            'origin_city_id' => OriginCity::all()->random()->id,
+            'origin_campus_id' => OriginCampus::all()->random()->id,
+            'phone_number' => '6282' . $this->faker->numberBetween(100000000, 999999999),
+            'room_number_id' => RoomNumber::all()->random()->id,
             'status' => 'active',
         ];
     }

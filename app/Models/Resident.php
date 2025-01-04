@@ -19,12 +19,27 @@ class Resident extends Model
         'age',
         'birth_date',
         'address',
-        'origin_city',
-        'origin_campus',
+        'origin_city_id',
+        'origin_campus_id',
         'phone_number',
-        'room_number',
+        'room_number_id',
         'status',
     ];
+
+    public function originCities()
+    {
+        return $this->belongsTo(OriginCity::class);
+    }
+
+    public function originCampuses()
+    {
+        return $this->belongsTo(OriginCampus::class);
+    }
+
+    public function roomNumbers()
+    {
+        return $this->belongsTo(RoomNumber::class);
+    }
 
     public function scopeByStatus($query, $status)
     {

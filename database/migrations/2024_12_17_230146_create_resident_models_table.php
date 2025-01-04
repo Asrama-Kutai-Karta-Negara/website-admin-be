@@ -17,10 +17,10 @@ return new class extends Migration
             $table->unsignedInteger('age');
             $table->date('birth_date');
             $table->string('address');
-            $table->string('origin_city');
-            $table->string('origin_campus');
+            $table->foreignUuid('origin_city_id')->constrained('origin_cities')->onDelete('cascade');
+            $table->foreignUuid('origin_campus_id')->constrained('origin_campuses')->onDelete('cascade');
             $table->string('phone_number')->nullable();
-            $table->string('room_number');
+            $table->foreignUuid('room_number_id')->constrained('room_numbers')->onDelete('cascade');
             $table->string('status')->default('active');
             $table->timestamps();
         });
