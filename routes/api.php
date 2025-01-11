@@ -59,6 +59,7 @@ Route::middleware([JwtMiddleware::class, HeaderMiddleware::class])->group(functi
 
         Route::get('reports', [FinancialReportController::class, 'index']);
         Route::post('reports', [FinancialReportController::class, 'store']);
+        Route::post('reports/export', [FinancialReportController::class, 'exportReport']);
         Route::get('reports/{id}', [FinancialReportController::class, 'show']);
         Route::get('reports/get-file/{id}', [FinancialReportController::class, 'showFile']);
         Route::put('reports/{id}', [FinancialReportController::class, 'update']);

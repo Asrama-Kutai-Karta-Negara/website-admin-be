@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exports\FinancialReportExport;
 use App\Http\Constants\ErrorMessages;
 use App\Http\Constants\FileConstant;
 use App\Http\Constants\SuccessMessages;
@@ -10,6 +11,8 @@ use App\Http\Responses\ApiResponse;
 use App\Models\FinancialReport;
 use App\Models\Payment;
 use App\Models\Resident;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -177,29 +180,54 @@ class FinancialReportController
             $rangeDate = (int) $input['range_date'];
             $formatFile = $input['format_file'];
 
-            $query = FinancialReport::query();
+            $fileName = "financial_report_";
+            $query = FinancialReport::query()
+                ->select('title', 'report_date', 'report_amount', 'report_categories');
 
             if ($rangeDate !== 0) {
                 $startDate = Carbon::now()->subMonths($rangeDate)->startOfMonth();
                 $endDate = Carbon::now()->endOfMonth();
                 $query->whereBetween('report_date', [$startDate, $endDate]);
+                $fileName = $fileName . $rangeDate . "_bulan";
+            } else {
+                $fileName = $fileName . "_semua_bulan";
             }
 
             $reports = $query->get();
 
+            $filePath = FileConstant::FOLDER_EXPORT_REPORT . '/' . $fileName;
+
             if ($formatFile === 'PDF') {
-                // Generate PDF
-                $pdf = Pdf::loadView('reports.pdf', ['reports' => $reports]);
-                return $pdf->download('financial_report.pdf');
+                $pdfContent = view('financial_report', ['reports' => $reports])->render();
+                $pdf = Pdf::loadHTML($pdfContent);
+                $filePath = $filePath . '.pdf';
+                Storage::disk(FileConstant::FOLDER_PUBLIC)
+                    ->put($filePath, $pdf->output());
+
+                $downloadUrl = Storage::url($filePath);
+
+                $data = [
+                    'file_name' => $fileName . '.pdf',
+                    'file_url' => $downloadUrl,
+                ];
+                return ApiResponse::success(SuccessMessages::SUCCESS_GENERATE_REPORT, $data);
             } elseif ($formatFile === 'Excel') {
-                // Generate Excel
-                return Excel::download(new FinancialReportExport($reports), 'financial_report.xlsx');
+                $excelContent = Excel::raw(new FinancialReportExport($reports), \Maatwebsite\Excel\Excel::XLSX);
+
+                $filePath = $filePath . '.xlsx';
+                Storage::disk(FileConstant::FOLDER_PUBLIC)
+                    ->put($filePath, $excelContent);
+
+                $downloadUrl = Storage::url($filePath);
+
+                $data = [
+                    'file_name' => $fileName . '.xlsx',
+                    'file_url' => $downloadUrl,
+                ];
+                return ApiResponse::success(SuccessMessages::SUCCESS_GENERATE_REPORT, $data);
             }
 
             return response()->json(['error' => 'Invalid format'], 400);
-
-            // return response($fileContent, Response::HTTP_OK)
-            //     ->header('Content-Type', $mimeType);
         } catch (\Exception $e) {
             Log::error('Error retrieving file: ' . $e->getMessage());
 

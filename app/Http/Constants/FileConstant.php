@@ -8,4 +8,5 @@ class FileConstant
     public const FOLDER_GALLERIES = 'galleries';
     public const FOLDER_PAYMENTS = 'payments';
     public const FOLDER_REPORT = 'reports';
+    public const FOLDER_EXPORT_REPORT = 'export';
 }

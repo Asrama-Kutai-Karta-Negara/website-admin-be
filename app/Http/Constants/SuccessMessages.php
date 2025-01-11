@@ -36,6 +36,8 @@ class SuccessMessages
     public const SUCCESS_GET_ORIGIN_CITY = "Origin City retrieved successfully";
     public const SUCCESS_GET_ROOM_NUMBER = "Room Number retrieved successfully";
 
+    public const SUCCESS_GENERATE_REPORT = "Report generated successfully";
+
     public const TOKEN_VALID = 'Token is valid';
     public const TOKEN_REFRESHED = 'Refresh token successfully';
 }
