@@ -56,7 +56,10 @@ class PaymentController
             if ($resident) {
                 $payment->resident_name = $resident->name;
             }
-            $payment->payment_evidence = Storage::url($payment->payment_evidence);
+            if ($payment->payment_evidence != null) {
+                $payment->payment_evidence = Storage::url($payment->payment_evidence);
+            }
+            $payment->move_to_report = strval($payment->move_to_report);
         }
 
         return ApiResponse::pagination(SuccessMessages::SUCCESS_GET_PAYMENT, $payments);
@@ -157,7 +160,7 @@ class PaymentController
         }
 
         try {
-            $filePath = $payment->file;
+            $filePath = $payment->payment_evidence;
             if (!Storage::disk(FileConstant::FOLDER_PUBLIC)->exists($filePath)) {
                 return ApiResponse::error('File not found', 404);
             }
@@ -219,7 +222,9 @@ class PaymentController
             }
 
             if ($request->hasFile('payment_evidence')) {
-                Storage::disk(FileConstant::FOLDER_PUBLIC)->delete($payment->payment_evidence);
+                if ($payment->payment_evidence != null) {
+                    Storage::disk(FileConstant::FOLDER_PUBLIC)->delete($payment->payment_evidence);
+                }
 
                 $file = $request->file('payment_evidence');
                 $filePath = $file->store(FileConstant::FOLDER_PAYMENTS, FileConstant::FOLDER_PUBLIC);

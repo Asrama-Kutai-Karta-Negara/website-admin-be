@@ -3,16 +3,20 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Constants\ErrorMessages;
+use App\Http\Constants\FileConstant;
 use App\Http\Constants\SuccessMessages;
 use App\Http\Constants\ValidationMessages;
 use App\Http\Responses\ApiResponse;
 use App\Models\FinancialReport;
 use App\Models\Payment;
+use App\Models\Resident;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Date;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Symfony\Component\HttpFoundation\Response;
 
 class FinancialReportController
 {
@@ -25,6 +29,7 @@ class FinancialReportController
         $limit = $request->input('limit', null);
         $sortBy = $request->input('sort_by', 'updated_at');
         $category = $request->input('category');
+        $title = $request->input('title');
 
         $maxLimit = 1000;
         $limit = is_numeric($limit) ? min((int)$limit, $maxLimit) : $maxLimit;
@@ -35,11 +40,20 @@ class FinancialReportController
             $query->byReportCategories($category);
         }
 
+        if (isset($title)) {
+            $query->byTitle($title);
+        }
+
         if (in_array($sortBy, ['name', 'created_at', 'updated_at'])) {
             $query->orderBy($sortBy, 'desc');
         }
 
         $financialReports = $query->paginate($limit);
+        foreach ($financialReports as $financialReport) {
+            if ($financialReport->report_evidence != null) {
+                $financialReport->report_evidence = Storage::url($financialReport->report_evidence);
+            }
+        }
 
         return ApiResponse::pagination(SuccessMessages::SUCCESS_GET_FINANCIAL_REPORT, $financialReports);
     }
@@ -72,8 +86,26 @@ class FinancialReportController
 
         try {
             $input = $request->all();
+            $fileName = null;
+            $filePath = null;
 
-            $financialReport = FinancialReport::create($input);
+            if ($request->hasFile('report_evidence')) {
+                $file = $request->file('report_evidence');
+                if (!$file->isValid()) {
+                    return ApiResponse::error('File is not valid', 400);
+                }
+
+                $filePath = $file->store(FileConstant::FOLDER_REPORT, FileConstant::FOLDER_PUBLIC);
+                $fileName = basename($filePath);
+            }
+            $financialReport = FinancialReport::create([
+                'title' => $input['title'],
+                'report_evidence' => $filePath,
+                'report_file_name' => $fileName,
+                'report_amount' => $input['report_amount'],
+                'report_date' => $input['report_date'],
+                'report_categories' => $input['report_categories'],
+            ]);
 
             if (!$financialReport) {
                 return ApiResponse::error(sprintf(ErrorMessages::FAILED_CREATE_MODEL, 'Financial Report'), 404);
@@ -101,6 +133,79 @@ class FinancialReportController
         return ApiResponse::success(SuccessMessages::SUCCESS_GET_FINANCIAL_REPORT, $financialReport);
     }
 
+    public function showFile($id)
+    {
+        $financialReport = FinancialReport::find($id);
+
+        if (!$financialReport) {
+            return ApiResponse::error(sprintf(ErrorMessages::MESSAGE_NOT_FOUND, 'Financial Report'), 404);
+        }
+
+        try {
+            $filePath = $financialReport->report_evidence;
+            if (!Storage::disk(FileConstant::FOLDER_PUBLIC)->exists($filePath)) {
+                return ApiResponse::error('File not found', 404);
+            }
+
+            $fileContent = Storage::disk(FileConstant::FOLDER_PUBLIC)->get($filePath);
+
+            $mimeType = File::mimeType(Storage::disk(FileConstant::FOLDER_PUBLIC)->path($filePath));
+
+            return response($fileContent, Response::HTTP_OK)
+                ->header('Content-Type', $mimeType);
+        } catch (\Exception $e) {
+            Log::error('Error retrieving file: ' . $e->getMessage());
+
+            return ApiResponse::error($e->getMessage(), 500);
+        }
+    }
+
+    public function exportReport(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'range_date' => 'required|integer|max:255',
+            'format_file' => 'required|string|in:PDF,Excel',
+        ]);
+
+        if ($validator->fails()) {
+            return ApiResponse::error($validator->errors()->first(), 400);
+        }
+
+        try {
+
+            $input = $request->all();
+            $rangeDate = (int) $input['range_date'];
+            $formatFile = $input['format_file'];
+
+            $query = FinancialReport::query();
+
+            if ($rangeDate !== 0) {
+                $startDate = Carbon::now()->subMonths($rangeDate)->startOfMonth();
+                $endDate = Carbon::now()->endOfMonth();
+                $query->whereBetween('report_date', [$startDate, $endDate]);
+            }
+
+            $reports = $query->get();
+
+            if ($formatFile === 'PDF') {
+                // Generate PDF
+                $pdf = Pdf::loadView('reports.pdf', ['reports' => $reports]);
+                return $pdf->download('financial_report.pdf');
+            } elseif ($formatFile === 'Excel') {
+                // Generate Excel
+                return Excel::download(new FinancialReportExport($reports), 'financial_report.xlsx');
+            }
+
+            return response()->json(['error' => 'Invalid format'], 400);
+
+            // return response($fileContent, Response::HTTP_OK)
+            //     ->header('Content-Type', $mimeType);
+        } catch (\Exception $e) {
+            Log::error('Error retrieving file: ' . $e->getMessage());
+
+            return ApiResponse::error($e->getMessage(), 500);
+        }
+    }
     /**
      * Show the form for editing the specified resource.
      */
@@ -133,7 +238,20 @@ class FinancialReportController
         }
 
         try {
-            $input = $request->only(['title', 'report_evidence', 'report_date', 'report_amount', 'report_categories']);
+            $input = $request->only(['title', 'report_evidence', 'report_file_name', 'report_date', 'report_amount', 'report_categories']);
+
+            if ($request->hasFile('report_evidence')) {
+                if ($financialReport->report_evidence != null) {
+                    Storage::disk(FileConstant::FOLDER_PUBLIC)->delete($financialReport->report_evidence);
+                }
+
+                $file = $request->file('report_evidence');
+                $filePath = $file->store(FileConstant::FOLDER_REPORT, FileConstant::FOLDER_PUBLIC);
+                $input['report_evidence'] = $filePath;
+
+                $fileName = basename($filePath);
+                $input['report_file_name'] = $fileName;
+            }
 
             $financialReport->update(array_filter($input, function ($value) {
                 return !is_null($value);
@@ -152,34 +270,32 @@ class FinancialReportController
     public function syncPayment()
     {
         try {
-            $payments = Payment::where('move_to_report', false)->get();
+            $payments = Payment::where('move_to_report', false)
+                ->where('status', 'Sudah Dibayar')
+                ->get();
             if ($payments->isEmpty()) {
                 return ApiResponse::error(sprintf(ErrorMessages::MESSAGE_CANT_SYNC, 'payment'), 404);
             }
 
-            $totalAmount = $payments->sum('billing_amount');
-
-            $currentDate = Carbon::now()->format('d_m_Y');
-            $title = ValidationMessages::SYNC_PAYMENT . '_' . $currentDate;
-
-            $input = [
-                'title' => $title,
-                'report_date' => Carbon::now(),
-                'report_amount' => $totalAmount,
-                'report_categories' => 'Pemasukan',
-            ];
-
-            $financialReport = FinancialReport::create($input);
-
-            if (!$financialReport) {
-                return ApiResponse::error(sprintf(ErrorMessages::FAILED_SYNC_MODEL, 'Payment'), 500);
-            }
-
             foreach ($payments as $payment) {
+
+                $resident = Resident::find($payment->resident_id);
+
+                $input = [
+                    'title' => ValidationMessages::SYNC_PAYMENT . '_' . $resident->name,
+                    'report_date' => $payment->billing_date,
+                    'report_amount' => $payment->billing_amount,
+                    'report_categories' => 'Pemasukan',
+                ];
+                $financialReport = FinancialReport::create($input);
+                if (!$financialReport) {
+                    return ApiResponse::error(sprintf(ErrorMessages::FAILED_SYNC_MODEL, 'Payment'), 500);
+                }
+
                 $payment->update(['move_to_report' => true]);
             }
 
-            return ApiResponse::success(SuccessMessages::SUCCESS_SYNC_PAYMENT, $financialReport);
+            return ApiResponse::success(SuccessMessages::SUCCESS_SYNC_PAYMENT, null);
         } catch (\Exception $e) {
             Log::error('Payment synchronization failed: ' . $e->getMessage());
             return ApiResponse::error($e->getMessage(), 500);
@@ -197,6 +313,7 @@ class FinancialReportController
             return ApiResponse::error(sprintf(ErrorMessages::MESSAGE_NOT_FOUND, 'Financial Report'), 404);
         }
 
+        Storage::disk(FileConstant::FOLDER_PUBLIC)->delete($financialReport->report_evidence);
         $financialReport->delete();
 
         return ApiResponse::success(SuccessMessages::SUCCESS_DELETE_FINANCIAL_REPORT);

@@ -21,7 +21,7 @@ return new class extends Migration
             $table->foreignUuid('origin_campus_id')->constrained('origin_campuses')->onDelete('cascade');
             $table->string('phone_number')->nullable();
             $table->foreignUuid('room_number_id')->constrained('room_numbers')->onDelete('cascade');
-            $table->string('status')->default('active');
+            $table->string('status');
             $table->timestamps();
         });
     }

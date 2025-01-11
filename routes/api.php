@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\OriginCampusController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\RoomNumberController;
 use App\Http\Controllers\Api\OriginCityController;
+use App\Http\Controllers\Api\StaticController;
 use App\Http\Middleware\HeaderMiddleware;
 use App\Http\Middleware\JwtMiddleware;
 use Illuminate\Support\Facades\Route;
@@ -59,9 +60,15 @@ Route::middleware([JwtMiddleware::class, HeaderMiddleware::class])->group(functi
         Route::get('reports', [FinancialReportController::class, 'index']);
         Route::post('reports', [FinancialReportController::class, 'store']);
         Route::get('reports/{id}', [FinancialReportController::class, 'show']);
+        Route::get('reports/get-file/{id}', [FinancialReportController::class, 'showFile']);
         Route::put('reports/{id}', [FinancialReportController::class, 'update']);
         Route::put('reports-sync', [FinancialReportController::class, 'syncPayment']);
         Route::delete('reports/{id}', [FinancialReportController::class, 'destroy']);
+
+        Route::get('residents/grafik/active', [StaticController::class, 'getResidentActive']);
+        Route::get('rooms/grafik/occupied', [StaticController::class, 'getOccupiedRoom']);
+        Route::get('income/grafik/{bulan}', [StaticController::class, 'getPemasukan']);
+        Route::get('outcome/grafik/{bulan}', [StaticController::class, 'getPengeluran']);
     });
 });
 

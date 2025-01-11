@@ -17,6 +17,7 @@ class FinancialReport extends Model
     protected $fillable = [
         'title',
         'report_evidence',
+        'report_file_name',
         'report_date',
         'report_amount',
         'report_categories'
@@ -36,5 +37,10 @@ class FinancialReport extends Model
     public function scopeByReportCategories($query, $category)
     {
         return $query->where('report_categories', $category);
+    }
+
+    public function scopeByTitle($query, $title)
+    {
+        return $query->where('title', 'like', "%{$title}%");
     }
 }

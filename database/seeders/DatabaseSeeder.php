@@ -49,6 +49,6 @@ class DatabaseSeeder extends Seeder
 
         OriginCity::factory()->count(38)->create();
 
-        Resident::factory()->count(100)->create();
+        Resident::factory()->count(50)->create();
     }
 }
