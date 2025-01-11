@@ -190,7 +190,7 @@ class FinancialReportController
                 $query->whereBetween('report_date', [$startDate, $endDate]);
                 $fileName = $fileName . $rangeDate . "_bulan";
             } else {
-                $fileName = $fileName . "_semua_bulan";
+                $fileName = $fileName . "semua_bulan";
             }
 
             $reports = $query->get();
@@ -228,6 +228,27 @@ class FinancialReportController
             }
 
             return response()->json(['error' => 'Invalid format'], 400);
+        } catch (\Exception $e) {
+            Log::error('Error retrieving file: ' . $e->getMessage());
+
+            return ApiResponse::error($e->getMessage(), 500);
+        }
+    }
+
+    public function showFileReport($filename)
+    {
+        $filePath = FileConstant::FOLDER_EXPORT_REPORT . '/' . $filename;
+        try {
+            if (!Storage::disk(FileConstant::FOLDER_PUBLIC)->exists($filePath)) {
+                return ApiResponse::error('File not found', 404);
+            }
+
+            $fileContent = Storage::disk(FileConstant::FOLDER_PUBLIC)->get($filePath);
+
+            $mimeType = File::mimeType(Storage::disk(FileConstant::FOLDER_PUBLIC)->path($filePath));
+
+            return response($fileContent, Response::HTTP_OK)
+                ->header('Content-Type', $mimeType);
         } catch (\Exception $e) {
             Log::error('Error retrieving file: ' . $e->getMessage());
 

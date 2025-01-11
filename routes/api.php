@@ -65,6 +65,7 @@ Route::middleware([JwtMiddleware::class, HeaderMiddleware::class])->group(functi
         Route::put('reports/{id}', [FinancialReportController::class, 'update']);
         Route::put('reports-sync', [FinancialReportController::class, 'syncPayment']);
         Route::delete('reports/{id}', [FinancialReportController::class, 'destroy']);
+        Route::get('reports/generate/get-file/{filename}', [FinancialReportController::class, 'showFileReport']);
 
         Route::get('residents/grafik/active', [StaticController::class, 'getResidentActive']);
         Route::get('rooms/grafik/occupied', [StaticController::class, 'getOccupiedRoom']);
