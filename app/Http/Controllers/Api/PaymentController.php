@@ -194,7 +194,7 @@ class PaymentController
         $validator = Validator::make($request->all(), [
             'resident_id' => 'nullable|exists:residents,id',
             'payment_evidence' => 'nullable|file|mimes:jpg,png,jpeg|max:5120',
-            'billing_date' => 'nullable|date|before:today|date_format:Y-m-d',
+            'billing_date' => 'nullable|date|date_format:Y-m-d',
             'billing_amount' => 'nullable|numeric|min:0',
             'status' => 'nullable|string|in:Belum Dibayar,Sudah Dibayar'
         ]);

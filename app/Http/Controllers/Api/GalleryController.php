@@ -49,7 +49,9 @@ class GalleryController extends Controller
             if ($category) {
                 $gallery->category_name = $category->name;
             }
-            $gallery->file = Storage::url($gallery->file);
+            if ($gallery->file != null) {
+                $gallery->file = Storage::url($gallery->file);
+            }
         }
 
         return ApiResponse::pagination(SuccessMessages::SUCCESS_GET_GALLERY, $galleries);
@@ -57,12 +59,20 @@ class GalleryController extends Controller
 
     public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        $rules = [
             'title' => 'required|string|max:255',
             'type' => 'required|in:Foto,Video',
-            'file' => 'required|file|mimes:jpeg,png|max:5120',
-            'category_id' => 'required|exists:category_galleries,id'
-        ]);
+            'category_id' => 'required|exists:category_galleries,id',
+        ];
+
+        if ($request->type === FileConstant::TYPE_FOTO) {
+            $rules['file'] = 'required|file|mimes:jpeg,png|max:51200';
+        } elseif ($request->type === FileConstant::TYPE_VIDEO) {
+            $rules['url'] = 'required|string|max:255';
+        }
+
+        $validator = Validator::make($request->all(), $rules);
+
         if ($validator->fails()) {
             return ApiResponse::error($validator->errors()->first(), 400);
         }
@@ -75,35 +85,37 @@ class GalleryController extends Controller
                 return ApiResponse::error(sprintf(ErrorMessages::MESSAGE_NOT_FOUND, 'Categori'), 400);
             }
 
-            $file = $request->file('file');
-            $filePath = $file->store(FileConstant::FOLDER_GALLERIES, FileConstant::FOLDER_PUBLIC);
+            $gallery = new Gallery();
+            $gallery->title = $input['title'];
+            $gallery->type = $input['type'];
+            $gallery->category_id = $category->id;
 
-            if (!$file->isValid()) {
-                return ApiResponse::error('File is not valid', 400);
+            if ($input['type'] === FileConstant::TYPE_FOTO) {
+                $file = $request->file('file');
+                if (!$file) {
+                    return ApiResponse::error(ErrorMessages::INVALID_GALLERY_TYPE_IMAGE, 400);
+                }
+
+                $filePath = $file->store(FileConstant::FOLDER_GALLERIES, FileConstant::FOLDER_PUBLIC);
+                if (!$file->isValid()) {
+                    return ApiResponse::error('File is not valid', 400);
+                }
+
+                $fileName = basename($filePath);
+                $gallery->file = $filePath;
+                $gallery->file_name = $fileName;
+            } else {
+                if (empty($input['url'])) {
+                    return ApiResponse::error(ErrorMessages::INVALID_GALLERY_TYPE_VIDEO, 400);
+                }
+                $gallery->url = $input['url'];
             }
-            $fileContent = file_get_contents($file->getRealPath());
-            if (!$fileContent) {
-                return ApiResponse::error('Error reading the file content', 500);
-            }
 
-            $fileName = basename($filePath);
-
-            $gallery = Gallery::create([
-                'title' => $input['title'],
-                'type' => $input['type'],
-                'file' => $filePath,
-                'file_name' => $fileName,
-                'category_id' => $category->id,
-            ]);
-
-            if (!$gallery) {
-                return ApiResponse::error(sprintf(ErrorMessages::MESSAGE_NOT_FOUND, 'gallery'), 404);
-            }
+            $gallery->save();
 
             return ApiResponse::success(SuccessMessages::SUCCESS_CREATE_GALLERY, $gallery, 201);
         } catch (\Exception $e) {
             Log::error('Gallery creation failed: ' . $e->getMessage());
-
             return ApiResponse::error($e->getMessage(), 500);
         }
     }
@@ -154,8 +166,9 @@ class GalleryController extends Controller
         $validator = Validator::make($request->all(), [
             'title' => 'nullable|string|max:255',
             'type' => 'nullable|in:Foto,Video',
-            'file' => 'nullable|file|mimes:jpeg,png|max:5120',
-            'category_id' => 'nullable|exists:category_galleries,id'
+            'file' => 'nullable|file|mimes:jpeg,png|max:51200',
+            'category_id' => 'nullable|exists:category_galleries,id',
+            'url' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -169,9 +182,9 @@ class GalleryController extends Controller
         }
 
         try {
-            $input = $request->only(['title', 'type', 'file', 'category_id', 'file_name']);
+            $input = $request->only(['title', 'type', 'file', 'category_id', 'file_name', 'url']);
 
-            if (isset($input['category_id']) && $input['category_id'] !== null) {
+            if (isset($input['category_id'])) {
                 $category = CategoryGallery::find($input['category_id']);
                 if (!$category) {
                     return ApiResponse::error(sprintf(ErrorMessages::MESSAGE_NOT_FOUND, 'Category'), 400);
@@ -180,26 +193,43 @@ class GalleryController extends Controller
                 unset($input['category_id']);
             }
 
-            if ($request->hasFile('file')) {
-                Storage::disk(FileConstant::FOLDER_PUBLIC)->delete($gallery->file);
+            if (isset($input['type']) && $input['type'] === FileConstant::TYPE_VIDEO) {
+                if (!empty($input['url'])) {
+                    $input['file'] = null;
+                } else {
+                    if ($request->hasFile('file')) {
+                        Storage::disk(FileConstant::FOLDER_PUBLIC)->delete($gallery->file);
 
-                $file = $request->file('file');
-                $filePath = $file->store(FileConstant::FOLDER_GALLERIES, FileConstant::FOLDER_PUBLIC);
-                $input['file'] = $filePath;
+                        $file = $request->file('file');
+                        $filePath = $file->store(FileConstant::FOLDER_GALLERIES, FileConstant::FOLDER_PUBLIC);
+                        $input['file'] = $filePath;
 
-                $fileName = basename($filePath);
-                $input['file_name'] = $fileName;
+                        $fileName = basename($filePath);
+                        $input['file_name'] = $fileName;
+                    }
+                }
+            }
+
+            if (isset($input['type']) && $input['type'] === FileConstant::TYPE_FOTO) {
+                if ($request->hasFile('file')) {
+                    Storage::disk(FileConstant::FOLDER_PUBLIC)->delete($gallery->file);
+
+                    $file = $request->file('file');
+                    $filePath = $file->store(FileConstant::FOLDER_GALLERIES, FileConstant::FOLDER_PUBLIC);
+                    $input['file'] = $filePath;
+
+                    $fileName = basename($filePath);
+                    $input['file_name'] = $fileName;
+                }
             }
 
             $gallery->update(array_filter($input, function ($value) {
                 return !is_null($value);
             }));
 
-            $gallery->update($input);
-
             return ApiResponse::success(SuccessMessages::SUCCESS_UPDATE_GALLERY, $gallery);
         } catch (\Exception $e) {
-            Log::error('Gallery creation failed: ' . $e->getMessage());
+            Log::error('Gallery update failed: ' . $e->getMessage());
 
             return ApiResponse::error($e->getMessage(), 500);
         }
@@ -213,7 +243,9 @@ class GalleryController extends Controller
             return ApiResponse::error(sprintf(ErrorMessages::MESSAGE_NOT_FOUND, 'Gallery'), 404);
         }
 
-        Storage::disk(FileConstant::FOLDER_PUBLIC)->delete($gallery->file);
+        if ($gallery->type === FileConstant::TYPE_FOTO) {
+            Storage::disk(FileConstant::FOLDER_PUBLIC)->delete($gallery->file);
+        }
         $gallery->delete();
 
         return ApiResponse::success(SuccessMessages::SUCCESS_DELETE_GALLERY);

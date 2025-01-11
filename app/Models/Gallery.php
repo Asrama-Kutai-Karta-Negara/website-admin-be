@@ -20,7 +20,8 @@ class Gallery extends Model
         'type',
         'kategori',
         'file',
-        'file_name'
+        'file_name',
+        'url'
     ];
 
     public function category()
