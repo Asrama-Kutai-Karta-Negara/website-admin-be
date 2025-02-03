@@ -69,6 +69,7 @@ Route::middleware([JwtMiddleware::class, HeaderMiddleware::class])->group(functi
 
         Route::get('residents/grafik/active', [StaticController::class, 'getResidentActive']);
         Route::get('rooms/grafik/occupied', [StaticController::class, 'getOccupiedRoom']);
+        Route::get('payments/grafik/sync', [StaticController::class, 'getSinkronisasiPayment']);
         Route::get('income/grafik/{bulan}', [StaticController::class, 'getPemasukan']);
         Route::get('outcome/grafik/{bulan}', [StaticController::class, 'getPengeluran']);
     });

@@ -23,6 +23,7 @@ class GalleryController extends Controller
         $limit = $request->input('limit', null);
         $sortBy = $request->input('sort_by', 'updated_at');
         $categoryId = $request->input('category_id');
+        $categoryName = $request->input('category_name');
         $name = $request->input('name');
 
         $maxLimit = 1000;
@@ -35,7 +36,14 @@ class GalleryController extends Controller
         }
 
         if (isset($categoryId)) {
-            $query->filterByCategoryId($categoryId);
+            $query->filterByArrayCategoryId($categoryId);
+        }
+
+        if (isset($categoryName)) {
+            $categoryIds = CategoryGallery::where('name', 'like', '%' . $categoryName . '%')
+                ->pluck('id')
+                ->toArray();
+            $query->filterByArrayCategoryId($categoryIds);
         }
 
         if (in_array($sortBy, ['name', 'created_at', 'updated_at'])) {

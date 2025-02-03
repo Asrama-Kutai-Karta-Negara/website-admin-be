@@ -46,6 +46,7 @@ class AuthController extends Controller
             if ($emailExists) {
                 return ApiResponse::error(ErrorMessages::EMAIL_ALREADY_EXISTS, 404);
             }
+            $input['role'] = 'User';
             $user = User::create($input);
 
             if (!$user) {
@@ -84,6 +85,9 @@ class AuthController extends Controller
         try {
             $user = User::where('email', $request->email)->first();
 
+            if ($user->role != 'Admin') {
+                return ApiResponse::error(ErrorMessages::INVALID_ROLE_ACCESS, 401);
+            }
             if (!$user) {
                 return ApiResponse::error(ErrorMessages::INVALID_CREDENTIALS, 401);
             }
@@ -96,6 +100,7 @@ class AuthController extends Controller
 
             $successData = [
                 'name' => $user->name,
+                'role' => $user->role,
                 'email' => $user->email,
                 'access_token' => $token,
             ];

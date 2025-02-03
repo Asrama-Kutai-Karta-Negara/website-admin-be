@@ -53,4 +53,13 @@ class Gallery extends Model
 
         return $query;
     }
+
+    public function scopeFilterByArrayCategoryId($query, $categoryIds)
+    {
+        if (!empty($categoryIds)) {
+            $query->whereIn('category_id', $categoryIds);
+        }
+
+        return $query;
+    }
 }

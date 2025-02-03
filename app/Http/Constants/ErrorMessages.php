@@ -8,6 +8,7 @@ class ErrorMessages
     public const FAILED_CREATE_MODEL = 'Failed to create %s!';
     public const FAILED_SYNC_MODEL = 'Failed to synchronized %s!';
     public const INVALID_CREDENTIALS = 'Invalid email or password!';
+    public const INVALID_ROLE_ACCESS = 'User access not admin!';
     public const INVALID_GALLERY_TYPE_VIDEO = 'Video URL is required for Video type.';
     public const INVALID_GALLERY_TYPE_IMAGE = 'File is required for Foto type.';
 

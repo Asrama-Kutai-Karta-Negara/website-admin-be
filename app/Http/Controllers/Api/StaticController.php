@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Constants\SuccessMessages;
 use App\Http\Responses\ApiResponse;
 use App\Models\FinancialReport;
+use App\Models\Payment;
 use App\Models\Resident;
 use App\Models\RoomNumber;
 use Illuminate\Http\Request;
@@ -101,5 +102,16 @@ class StaticController extends Controller
             'total_outcome' => array_sum($weeklyIncome),
         ];
         return ApiResponse::success(SuccessMessages::SUCCESS_GET_FINANCIAL_REPORT, $data);
+    }
+
+    public function getSinkronisasiPayment()
+    {
+        $activeSinkronisasiCount = Payment::query()->where('move_to_report', '0')->count();
+        $totalSinkronisasiCount = Resident::all()->count();
+        $data = [
+            'data_active' => $activeSinkronisasiCount,
+            'data_count' => $totalSinkronisasiCount,
+        ];
+        return ApiResponse::success(SuccessMessages::SUCCESS_GET_RESIDENT, $data);
     }
 }
